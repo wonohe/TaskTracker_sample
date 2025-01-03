@@ -5,10 +5,16 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { TodoItem } from "../components/TodoItem";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import type { SelectTask } from "@db/schema";
+
+type FilterStatus = "all" | "active" | "completed";
 
 export function TodoList() {
   const [newTask, setNewTask] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const { toast } = useToast();
 
   const { data: tasks = [], refetch } = useQuery<SelectTask[]>({
@@ -79,6 +85,21 @@ export function TodoList() {
     addMutation.mutate(newTask);
   };
 
+  const filteredTasks = tasks
+    .filter((task) => {
+      switch (filterStatus) {
+        case "active":
+          return !task.completed;
+        case "completed":
+          return task.completed;
+        default:
+          return true;
+      }
+    })
+    .filter((task) =>
+      task.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
@@ -95,8 +116,48 @@ export function TodoList() {
           />
         </form>
 
+        <div className="mb-6 space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tasks..."
+              className="pl-9"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant={filterStatus === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilterStatus("all")}
+              className="flex-1"
+            >
+              All
+            </Button>
+            <Button
+              variant={filterStatus === "active" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilterStatus("active")}
+              className="flex-1"
+            >
+              Active
+            </Button>
+            <Button
+              variant={filterStatus === "completed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilterStatus("completed")}
+              className="flex-1"
+            >
+              Completed
+            </Button>
+          </div>
+        </div>
+
         <AnimatePresence initial={false}>
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <motion.div
               key={task.id}
               initial={{ opacity: 0, y: 20 }}
@@ -114,6 +175,16 @@ export function TodoList() {
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {filteredTasks.length === 0 && (
+          <p className="text-center text-muted-foreground text-sm">
+            {searchQuery
+              ? "No tasks match your search"
+              : filterStatus === "all"
+              ? "No tasks yet"
+              : `No ${filterStatus} tasks`}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
