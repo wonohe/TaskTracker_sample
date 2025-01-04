@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -12,23 +11,21 @@ interface TodoItemProps {
 }
 
 export function TodoItem({ task, onToggle, onDelete }: TodoItemProps) {
-  const { completed, content } = task;
-  
   return (
     <div className="flex items-center justify-between p-4 border-b border-border group">
       <div className="flex items-center gap-3">
         <Checkbox
-          checked={completed}
+          checked={task.completed}
           onCheckedChange={onToggle}
           className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
         />
         <motion.span
-          animate={{ opacity: completed ? 0.5 : 1 }}
+          animate={{ opacity: task.completed ? 0.5 : 1 }}
           className={`text-sm ${
-            completed ? "line-through text-muted-foreground" : ""
+            task.completed ? "line-through text-muted-foreground" : ""
           }`}
         >
-          {content}
+          {task.content}
         </motion.span>
       </div>
       <Button
