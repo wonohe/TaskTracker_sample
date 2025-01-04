@@ -1,36 +1,40 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { TodoItem } from "../components/TodoItem";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { TodoItem } from "../components/TodoItem";
 import type { SelectTask } from "@db/schema";
 
 type FilterStatus = "all" | "active" | "completed";
 
 export function TodoList() {
+  // State
   const [newTask, setNewTask] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const { toast } = useToast();
 
+  // Queries
   const { data: tasks = [], refetch } = useQuery<SelectTask[]>({
     queryKey: ["/api/tasks"],
   });
 
+  // Mutations
   const addMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const res = await fetch("/api/tasks", {
+    mutationFn: (content: string) => 
+      fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
-      });
-      if (!res.ok) throw new Error("Failed to add task");
-      return res.json();
-    },
+      }).then(res => {
+        if (!res.ok) throw new Error("Failed to add task");
+        return res.json();
+      }),
     onSuccess: () => {
       setNewTask("");
       refetch();
@@ -45,15 +49,15 @@ export function TodoList() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      const res = await fetch(`/api/tasks/${id}`, {
+    mutationFn: ({ id, completed }: { id: number; completed: boolean }) =>
+      fetch(`/api/tasks/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed }),
-      });
-      if (!res.ok) throw new Error("Failed to update task");
-      return res.json();
-    },
+      }).then(res => {
+        if (!res.ok) throw new Error("Failed to update task");
+        return res.json();
+      }),
     onSuccess: () => refetch(),
     onError: () => {
       toast({
@@ -65,10 +69,10 @@ export function TodoList() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete task");
-    },
+    mutationFn: (id: number) =>
+      fetch(`/api/tasks/${id}`, { method: "DELETE" }).then(res => {
+        if (!res.ok) throw new Error("Failed to delete task");
+      }),
     onSuccess: () => refetch(),
     onError: () => {
       toast({
@@ -79,24 +83,21 @@ export function TodoList() {
     },
   });
 
+  // Event Handlers
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTask.trim()) return;
     addMutation.mutate(newTask);
   };
 
+  // Filtered Tasks
   const filteredTasks = tasks
-    .filter((task) => {
-      switch (filterStatus) {
-        case "active":
-          return !task.completed;
-        case "completed":
-          return task.completed;
-        default:
-          return true;
-      }
+    .filter(task => {
+      if (filterStatus === "active") return !task.completed;
+      if (filterStatus === "completed") return task.completed;
+      return true;
     })
-    .filter((task) =>
+    .filter(task => 
       task.content.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -129,30 +130,17 @@ export function TodoList() {
           </div>
 
           <div className="flex gap-2">
-            <Button
-              variant={filterStatus === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterStatus("all")}
-              className="flex-1"
-            >
-              All
-            </Button>
-            <Button
-              variant={filterStatus === "active" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterStatus("active")}
-              className="flex-1"
-            >
-              Active
-            </Button>
-            <Button
-              variant={filterStatus === "completed" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterStatus("completed")}
-              className="flex-1"
-            >
-              Completed
-            </Button>
+            {["all", "active", "completed"].map((status) => (
+              <Button
+                key={status}
+                variant={filterStatus === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilterStatus(status as FilterStatus)}
+                className="flex-1"
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </Button>
+            ))}
           </div>
         </div>
 
@@ -167,9 +155,7 @@ export function TodoList() {
             >
               <TodoItem
                 task={task}
-                onToggle={(completed) =>
-                  toggleMutation.mutate({ id: task.id, completed })
-                }
+                onToggle={(completed) => toggleMutation.mutate({ id: task.id, completed })}
                 onDelete={() => deleteMutation.mutate(task.id)}
               />
             </motion.div>
